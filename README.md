@@ -24,6 +24,10 @@ This project is a Streamlit-powered dashboard for testing and visualizing pairs 
 
 ---
 
+### Click on the link in the description to use the app
+
+---
+
 ## 📦 Setup Locally
 
 ### 1. Clone the Repository
@@ -82,4 +86,4 @@ streamlit run streamlit_pairs_dashboard.py
 
 ## 📬 Questions?
 
-Open an issue or reach out at diegomiura@example.com (replace with your contact).
+Open an issue or reach out at diego.miura@yale.edu .
