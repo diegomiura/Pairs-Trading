@@ -1,90 +1,61 @@
+
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
+import plotly.graph_objs as go
 
-# Load precomputed optimization results
-@st.cache_data
-def load_data():
-    df = pd.read_csv("all_pair_optimization_results.csv")
-    return df
+# Load pair results
+pair_df = pd.read_csv("all_pair_optimization_results.csv")
+pair_df = pair_df.sort_values(by="Sharpe", ascending=False)
 
-st.set_page_config(layout="wide")
-st.title("📈 Pairs Trading Leaderboard")
+# Filters
+min_sharpe = st.sidebar.slider("Min Sharpe Ratio", -5.0, 5.0, 0.0, 0.1)
+min_trades = st.sidebar.slider("Min Number of Trades", 0, 300, 10, 5)
+top_n = st.sidebar.slider("Show Top N Pairs", 1, 50, 10)
 
-# Load data
-df = load_data()
+filtered = pair_df[(pair_df["Sharpe"] >= min_sharpe) & (pair_df["Trades"] >= min_trades)].head(top_n)
+st.title("📈 Pairs Trading Dashboard")
+st.dataframe(filtered.reset_index(drop=True), use_container_width=True)
 
-# Sidebar filters
-with st.sidebar:
-    st.header("Filter Options")
-    min_sharpe = st.slider("Minimum Sharpe Ratio", -2.0, 5.0, 0.5, 0.1)
-    max_trades = st.slider("Maximum Trades", 0, 500, 100, 10)
-    top_n = st.slider("Top N Results", 5, 50, 10)
+# Safe selectbox logic
+if not filtered.empty:
+    selected_row = st.selectbox("Select a pair to view backtest", filtered.index)
 
-# Apply filters
-filtered = df[(df['Sharpe'] >= min_sharpe) & (df['Trades'] <= max_trades)]
-filtered = filtered.sort_values(by='Sharpe', ascending=False).head(top_n)
+    if selected_row in filtered.index:
+        row = filtered.loc[selected_row]
+        stock1 = row["Stock 1"]
+        stock2 = row["Stock 2"]
+        hedge_ratio = None
 
-# Leaderboard table
-st.subheader("🔝 Top Pairs by Sharpe Ratio")
-st.dataframe(filtered, use_container_width=True)
+        # Load price data
+        data = pd.read_csv("price_data.csv", index_col=0, parse_dates=True)
+        if stock1 in data.columns and stock2 in data.columns:
+            s1 = data[stock1]
+            s2 = data[stock2]
 
-# Plot selected pair's cumulative return
-st.subheader("📊 Strategy Return Plot")
-selected_row = st.selectbox("Select a row to visualize", filtered.index)
-row = filtered.loc[selected_row]
+            # Estimate hedge ratio
+            import statsmodels.api as sm
+            X = sm.add_constant(s2)
+            model = sm.OLS(s1, X).fit()
+            hedge_ratio = model.params[stock2]
 
-# Load the price data again
-data = pd.read_csv("price_data.csv", index_col=0, parse_dates=True)
-s1 = data[row['Stock 1']]
-s2 = data[row['Stock 2']]
+            spread = s1 - hedge_ratio * s2
+            zscore = (spread - spread.rolling(30).mean()) / spread.rolling(30).std()
 
-# Recompute spread and return
-import statsmodels.api as sm
-X = sm.add_constant(s2)
-model = sm.OLS(s1, X).fit()
-hedge_ratio = model.params[row['Stock 2']]
-spread = s1 - hedge_ratio * s2
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=spread.index, y=spread, name="Spread"))
+            fig.add_trace(go.Scatter(x=spread.index, y=spread.rolling(30).mean(), name="Rolling Mean"))
+            fig.add_trace(go.Scatter(x=spread.index, y=spread.rolling(30).mean() + zscore.std(), name="+1σ", line=dict(dash='dot')))
+            fig.add_trace(go.Scatter(x=spread.index, y=spread.rolling(30).mean() - zscore.std(), name="-1σ", line=dict(dash='dot')))
+            st.plotly_chart(fig, use_container_width=True)
 
-spread_df = pd.DataFrame(index=spread.index)
-spread_df['Spread'] = spread
-spread_df['Mean'] = spread.rolling(int(row['Rolling Window'])).mean()
-spread_df['Std'] = spread.rolling(int(row['Rolling Window'])).std()
-spread_df['Z'] = (spread - spread_df['Mean']) / spread_df['Std']
-spread_df = spread_df.dropna()
-
-spread_df['Long'] = (spread_df['Z'] < -row['Entry Z']).astype(int)
-spread_df['Short'] = (spread_df['Z'] > row['Entry Z']).astype(int)
-spread_df['Exit'] = (spread_df['Z'].abs() < row['Exit Z']).astype(int)
-
-position = 0
-positions = []
-for i in range(len(spread_df)):
-    if spread_df['Long'].iloc[i]:
-        position = 1
-    elif spread_df['Short'].iloc[i]:
-        position = -1
-    elif spread_df['Exit'].iloc[i]:
-        position = 0
-    positions.append(position)
-spread_df['Position'] = positions
-
-returns = pd.concat([s1, s2], axis=1).pct_change().dropna()
-returns.columns = ['ret1', 'ret2']
-common_index = spread_df.index.intersection(returns.index)
-spread_df = spread_df.loc[common_index]
-returns = returns.loc[common_index]
-
-spread_df['PnL'] = spread_df['Position'] * (returns['ret1'] - hedge_ratio * returns['ret2'])
-spread_df['Trade'] = spread_df['Position'].diff().abs() > 0
-spread_df.loc[spread_df['Trade'], 'PnL'] -= 0.002  # transaction cost
-spread_df['Cumulative'] = (1 + spread_df['PnL']).cumprod()
-
-fig = go.Figure()
-fig.add_trace(go.Scatter(x=spread_df.index, y=spread_df['Cumulative'], mode='lines', name='Cumulative Return'))
-fig.update_layout(title=f"{row['Stock 1']} vs {row['Stock 2']}", xaxis_title="Date", yaxis_title="Cumulative Return")
-st.plotly_chart(fig, use_container_width=True)
-
-st.markdown("---")
-st.caption("Built with Streamlit • Author: Your Name • Data: Pairs Trading Optimizer")
+            st.markdown(f"""
+            **Hedge Ratio**: {hedge_ratio:.3f}  
+            **Pair**: `{stock1}` (long) vs `{stock2}` (short)  
+            **Entry Z**: ±1.0 | **Exit Z**: 0.5
+            """)
+        else:
+            st.error("Selected stocks not found in price data.")
+    else:
+        st.info("Please select a valid pair to display.")
+else:
+    st.warning("No pairs match your filters. Adjust the sliders.")
