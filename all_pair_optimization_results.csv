@@ -1,5 +1,5 @@
-Stock 1,Stock 2,Cluster,Rolling Window,Entry Z,Exit Z,Total Return,Sharpe,Trades,Cointegration p-value
-V,MA,1,60,2.0,0.5,0.15,1.8,32,0.0007
-MA,V,1,30,1.5,0.5,0.08,1.2,45,0.0021
-MSFT,AAPL,2,30,1.5,0.5,0.1,1.5,20,0.0035
-JPM,BAC,0,60,2.0,0.5,0.12,1.6,25,0.0012
+Stock 1,Stock 2,Rolling Window,Entry Z,Exit Z,Total Return,Sharpe,Trades,Cointegration p-value
+MA,JPM,30,1.0,0.5,-95.34,-1.79,146,0.002
+MSFT,JPM,30,1.0,0.5,-99.69,-2.11,144,0.0453
+V,MA,30,1.0,0.5,-79.13,-2.51,157,0.0007
+V,JPM,30,1.0,0.5,-94.15,-2.92,160,0.0019
