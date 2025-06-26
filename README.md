@@ -5,7 +5,7 @@ This project is a Streamlit-powered dashboard for testing and visualizing pairs 
 
 ---
 
-## 🚀 Features
+## Features
 
 - Automatically selects cointegrated stock pairs using the Engle-Granger test
 - Optimizes signal thresholds and lookbacks for Sharpe Ratio
@@ -15,7 +15,7 @@ This project is a Streamlit-powered dashboard for testing and visualizing pairs 
 
 ---
 
-## 🧰 Tech Stack
+## Tech Stack
 
 - Python 3.10 (required)
 - Streamlit
@@ -28,11 +28,11 @@ This project is a Streamlit-powered dashboard for testing and visualizing pairs 
 
 ---
 
-## 📦 Setup Locally
+## Setup Locally
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/pairs-trading.git
+git clone https://github.com/diegomiura/pairs-trading.git
 cd pairs-trading
 ```
 
@@ -67,7 +67,7 @@ streamlit run streamlit_pairs_dashboard.py
 
 ---
 
-## 📝 Notes
+## Notes
 
 - You **must** use Python 3.10. `statsmodels` is not compatible with Python 3.13+ as of June 2025.
 - No `.streamlit/config.toml` is needed if you set the version manually in the Streamlit UI.
@@ -75,7 +75,7 @@ streamlit run streamlit_pairs_dashboard.py
 
 ---
 
-## 📈 Sample Output
+## Sample Output
 
 - Total return
 - Sharpe Ratio
@@ -84,6 +84,6 @@ streamlit run streamlit_pairs_dashboard.py
 
 ---
 
-## 📬 Questions?
+## Questions?
 
 Open an issue or reach out at diego.miura@yale.edu .
